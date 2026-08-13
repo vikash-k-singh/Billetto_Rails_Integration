@@ -72,4 +72,3 @@ gem 'dry-types', '~> 1.9'
 gem 'faraday', '~> 2.14'
 gem 'faraday-net_http', '~> 3.4'
 gem 'clerk-sdk-ruby', '~> 5.1', require: "clerk"
-gem "sidekiq", "~> 7.0"

@@ -23,7 +23,7 @@ module Voting
       fact = fact_class.strict(data: { event_id: command.event_id, user_id: command.user_id })
       publish_to_streams(fact)
     rescue RubyEventStore::WrongExpectedEventVersion
-      # Concurrent duplicate — safe to ignore
+      # Concurrent duplicate, safe to ignore
     end
 
     def already_voted?(event_id, user_id)

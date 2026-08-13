@@ -4,9 +4,9 @@ namespace :billetto do
     result = Billetto::IngestService.new.call
 
     if result.success
-      puts "Ingestion complete — created: #{result.created}, updated: #{result.updated}, errors: #{result.errors}"
+      puts "Ingestion complete - created: #{result.created}, updated: #{result.updated}, errors: #{result.errors}"
     else
-      warn "Ingestion failed — check Rails logs for details"
+      warn "Ingestion failed - check Rails logs for details"
       exit 1
     end
   end

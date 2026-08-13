@@ -1,32 +1,42 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <title><%= content_for(:title) || "Billetto Integration" %></title>
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="Billetto Integration">
-    <meta name="mobile-web-app-capable" content="yes">
-    <%= csrf_meta_tags %>
-    <%= csp_meta_tag %>
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <title>Billetto</title>
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <%= csrf_meta_tags %>
+      <%= csp_meta_tag %>
 
-    <%= yield :head %>
+      <script async crossorigin="anonymous"
+        src="https://useful-snipe-29.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+        data-clerk-publishable-key="<%= ENV['CLERK_PUBLISHABLE_KEY'] %>">
+      </script>
+    </head>
 
-    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
-    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
+    <body>
+      <nav style="padding: 1rem; background: #f5f5f5; margin-bottom: 1rem; display: flex; justify-content:
+  space-between; align-items: center;">
+        <strong>Billetto Events</strong>
+        <div id="clerk-auth"></div>
+      </nav>
 
-    <link rel="icon" href="/icon.png" type="image/png">
-    <link rel="icon" href="/icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/icon.png">
+      <%= yield %>
 
-    <%# Includes all stylesheet files in app/assets/stylesheets %>
-    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
-    <script async crossorigin="anonymous"
-      src="https://useful-snipe-29.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
-      data-clerk-publishable-key="<%= ENV['CLERK_PUBLISHABLE_KEY'] %>">
-    </script>
-  </head>
+      <script>
+        window.addEventListener('load', async function () {
+          await Clerk.load();
 
-  <body>
-    <%= yield %>
-  </body>
-</html>
+          const container = document.getElementById('clerk-auth');
+
+          if (Clerk.user) {
+            container.innerHTML =
+              '<span>Signed in as ' + (Clerk.user.firstName || Clerk.user.emailAddresses[0].emailAddress) +
+  '</span>' +
+              ' &nbsp; <button onclick="Clerk.signOut(() => window.location.reload())">Sign Out</button>';
+          } else {
+            container.innerHTML =
+              '<button onclick="Clerk.openSignIn()">Sign In</button>';
+          }
+        });
+      </script>
+    </body>
+  </html>
