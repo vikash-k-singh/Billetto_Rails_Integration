@@ -22,6 +22,7 @@ module BillettoIntegration
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.1
+    config.active_job.enqueue_after_transaction_commit = true
 
     config.autoload_paths += %W[#{root}/app/domain #{root}/app/integrations #{root}/lib]
     # Please, add to the `ignore` list any other `lib` subdirectories that do

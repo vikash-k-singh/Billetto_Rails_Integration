@@ -8,7 +8,7 @@ module Billetto
 
     def call
       events_data = @adapter.fetch_all_events
-      fetched_ids = events_data.map(&:external_id)
+      fetched_ids = events_data.map(&:external_id).compact
       created = updated = errors = 0
 
       events_data.each do |data|
@@ -31,12 +31,23 @@ module Billetto
         end
       end
 
-      Event.where.not(external_id: fetched_ids).update_all(available: false)
+      mark_missing_unavailable(fetched_ids)
 
       Result.new(success: true, created: created, updated: updated, errors: errors)
     rescue Billetto::Error => e
       Rails.logger.error("Billetto ingestion failed: #{e.message}")
       Result.new(success: false, created: 0, updated: 0, errors: 1)
+    end
+
+    private
+
+    def mark_missing_unavailable(fetched_ids)
+      if fetched_ids.empty?
+        Rails.logger.warn("Billetto ingestion returned no events; skipping unavailability update")
+        return
+      end
+
+      Event.where.not(external_id: fetched_ids).update_all(available: false)
     end
   end
 end

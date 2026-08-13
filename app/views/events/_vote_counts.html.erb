@@ -1,0 +1,29 @@
+<%= tag.div id: event_votes_dom_id(event), class: "vote-bar" do %>
+  <% upvotes = event.vote_count&.upvotes || 0 %>
+  <% downvotes = event.vote_count&.downvotes || 0 %>
+  <% if current_user %>
+    <%= button_to votes_path,
+          method: :post,
+          params: { event_id: event.external_id, vote_type: "up" },
+          form: { data: { turbo: true, turbo_stream: true } },
+          class: "vote-chip vote-chip--up",
+          aria: { label: "Upvote" },
+          title: "Upvote this event",
+          data: { turbo_submits_with: "👍 #{upvotes}" } do %>
+      👍 <%= upvotes %>
+    <% end %>
+    <%= button_to votes_path,
+          method: :post,
+          params: { event_id: event.external_id, vote_type: "down" },
+          form: { data: { turbo: true, turbo_stream: true } },
+          class: "vote-chip vote-chip--down",
+          aria: { label: "Downvote" },
+          title: "Downvote this event",
+          data: { turbo_submits_with: "👎 #{downvotes}" } do %>
+      👎 <%= downvotes %>
+    <% end %>
+  <% else %>
+    <span class="vote-chip-static" title="Sign in to upvote">👍 <%= upvotes %></span>
+    <span class="vote-chip-static" title="Sign in to downvote">👎 <%= downvotes %></span>
+  <% end %>
+<% end %>

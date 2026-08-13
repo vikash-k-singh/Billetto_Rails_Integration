@@ -1,14 +1,13 @@
 module ClerkHelpers
   def sign_in_as(user_id: 'test_user_001')
-    allow_any_instance_of(ApplicationController)
-      .to receive(:clerk_session_user)
-      .and_return(OpenStruct.new(id: user_id))
+    allow_any_instance_of(Clerk::SDK)
+      .to receive(:verify_token)
+      .and_return({ 'sub' => user_id })
+    cookies[:__session] = 'test-session-token'
   end
 
   def sign_out
-    allow_any_instance_of(ApplicationController)
-      .to receive(:clerk_session_user)
-      .and_return(nil)
+    cookies.delete(:__session)
   end
 end
 

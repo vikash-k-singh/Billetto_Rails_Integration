@@ -1,0 +1,3 @@
+<%= turbo_stream.replace event_votes_dom_id(@event) do %>
+  <%= render "events/vote_counts", event: @event %>
+<% end %>

@@ -13,7 +13,7 @@ RSpec.describe Billetto::IngestService do
     )
   end
 
-  let(:fake_adapter) { double('adapter', fetch_all_events: [event_data]) }
+  let(:fake_adapter) { double('adapter', fetch_all_events: [ event_data ]) }
 
   describe '#call' do
     it 'creates a new Event record' do
@@ -43,6 +43,13 @@ RSpec.describe Billetto::IngestService do
       expect(Event.find_by(external_id: 'ext-100').available).to be true
     end
 
+    it 'does not mark existing events unavailable when the fetch is empty' do
+      stale = create(:event, external_id: 'keep-me', available: true)
+      allow(fake_adapter).to receive(:fetch_all_events).and_return([])
+      service.call
+      expect(stale.reload.available).to be true
+    end
+
     it 'returns a successful result with created count' do
       result = service.call
       expect(result.success).to be true
@@ -54,6 +61,18 @@ RSpec.describe Billetto::IngestService do
         .and_raise(Billetto::ApiError, 'connection failed')
       result = service.call
       expect(result.success).to be false
+    end
+
+    it 'returns a failed result on timeout' do
+      allow(fake_adapter).to receive(:fetch_all_events)
+        .and_raise(Billetto::TimeoutError, 'timed out')
+      expect(service.call.success).to be false
+    end
+
+    it 'returns a failed result on malformed responses' do
+      allow(fake_adapter).to receive(:fetch_all_events)
+        .and_raise(Billetto::MalformedResponseError, 'bad json')
+      expect(service.call.success).to be false
     end
   end
 end

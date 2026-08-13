@@ -10,7 +10,7 @@ RSpec.describe Billetto::Client do
   let(:success_body) do
     {
       object: 'list',
-      data: [{
+      data: [ {
         id: '123', title: 'Test Event',
         startdate: '2026-06-01T10:00:00Z', enddate: '2026-06-01T12:00:00Z',
         description: 'A description', image_link: 'https://img.example.com/1.jpg',
@@ -18,7 +18,7 @@ RSpec.describe Billetto::Client do
         organiser: { id: 1, name: 'Org' },
         location: { location_name: 'Hall', address_line: 'Main St',
                     city: 'Copenhagen', country: 'Denmark' }
-      }],
+      } ],
       has_more: false, total: 1
     }.to_json
   end
@@ -65,6 +65,28 @@ RSpec.describe Billetto::Client do
         .with(query: hash_including({}))
         .to_return(status: 500, body: 'Server Error')
       expect { client.list_events }.to raise_error(Billetto::ApiError)
+    end
+
+    it 'raises TimeoutError when the request times out' do
+      stub_request(:get, events_url)
+        .with(query: hash_including({}))
+        .to_raise(Faraday::TimeoutError.new('timeout'))
+      expect { client.list_events }.to raise_error(Billetto::TimeoutError)
+    end
+
+    it 'raises ConnectionError when the connection fails' do
+      stub_request(:get, events_url)
+        .with(query: hash_including({}))
+        .to_raise(Faraday::ConnectionFailed.new('failed'))
+      expect { client.list_events }.to raise_error(Billetto::ConnectionError)
+    end
+
+    it 'raises MalformedResponseError for invalid JSON' do
+      stub_request(:get, events_url)
+        .with(query: hash_including({}))
+        .to_return(status: 200, body: 'not-json',
+                   headers: { 'Content-Type' => 'application/json' })
+      expect { client.list_events }.to raise_error(Billetto::MalformedResponseError)
     end
   end
 end

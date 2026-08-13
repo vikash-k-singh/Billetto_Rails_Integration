@@ -1,0 +1,31 @@
+<article class="event-card">
+  <div class="event-card__media">
+    <% if event.image_url.present? %>
+      <img src="<%= event.image_url %>" alt="<%= event.title %>">
+    <% end %>
+  </div>
+
+  <div>
+    <h2 class="event-card__title"><%= event.title %></h2>
+
+    <p class="event-card__meta">
+      <span><%= event.starts_at.strftime("%d %b %Y, %H:%M") %></span>
+      <% if event.location.present? %>
+        <span><%= event.location %></span>
+      <% end %>
+      <% if event.organiser_name.present? %>
+        <span><%= event.organiser_name %></span>
+      <% end %>
+    </p>
+
+    <p class="event-card__copy"><%= truncate(event.description.to_s, length: 200) %></p>
+
+    <div class="event-card__actions">
+      <%= render "events/vote_counts", event: event %>
+
+      <% if event.billetto_url.present? %>
+        <%= link_to "View on Billetto", event.billetto_url, class: "ticket-link", target: "_blank", rel: "noopener noreferrer" %>
+      <% end %>
+    </div>
+  </div>
+</article>

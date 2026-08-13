@@ -1,42 +1,122 @@
-  <!DOCTYPE html>
-  <html>
-    <head>
-      <title>Billetto</title>
-      <meta name="viewport" content="width=device-width,initial-scale=1">
-      <%= csrf_meta_tags %>
-      <%= csp_meta_tag %>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Billetto Events</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
 
+    <% if clerk_js_url.present? && clerk_publishable_key.present? %>
       <script async crossorigin="anonymous"
-        src="https://useful-snipe-29.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
-        data-clerk-publishable-key="<%= ENV['CLERK_PUBLISHABLE_KEY'] %>">
+        src="<%= clerk_js_url %>"
+        data-clerk-publishable-key="<%= clerk_publishable_key %>">
       </script>
-    </head>
+    <% end %>
+  </head>
 
-    <body>
-      <nav style="padding: 1rem; background: #f5f5f5; margin-bottom: 1rem; display: flex; justify-content:
-  space-between; align-items: center;">
-        <strong>Billetto Events</strong>
-        <div id="clerk-auth"></div>
-      </nav>
+  <body>
+    <header class="topbar">
+      <%= link_to root_path, class: "brand" do %>
+        <span class="brand__mark" aria-hidden="true">B</span>
+        <strong class="brand__name">Billetto Events</strong>
+      <% end %>
+
+      <div id="clerk-auth" class="auth">
+        <% if current_user %>
+          <span class="auth__name">Signed in</span>
+          <%= button_to "Sign Out", session_path, method: :delete, id: "clerk-sign-out",
+                form: { id: "clerk-sign-out-form", data: { turbo: false } } %>
+        <% else %>
+          <button type="button" id="clerk-sign-in">Sign In</button>
+          <button type="button" id="clerk-sign-up">Sign Up</button>
+        <% end %>
+      </div>
+    </header>
+
+    <main class="page">
+      <% if notice.present? %>
+        <p class="flash flash--notice"><%= notice %></p>
+      <% end %>
+      <% if alert.present? %>
+        <p class="flash flash--alert"><%= alert %></p>
+      <% end %>
 
       <%= yield %>
+    </main>
 
-      <script>
-        window.addEventListener('load', async function () {
-          await Clerk.load();
+    <%= javascript_tag nonce: true do %>
+      window.addEventListener('load', async function () {
+        if (typeof Clerk === 'undefined' || !Clerk.load) { return; }
+        await Clerk.load();
 
-          const container = document.getElementById('clerk-auth');
+        function serverSignedIn() {
+          return !!document.getElementById('clerk-sign-out');
+        }
 
-          if (Clerk.user) {
-            container.innerHTML =
-              '<span>Signed in as ' + (Clerk.user.firstName || Clerk.user.emailAddresses[0].emailAddress) +
-  '</span>' +
-              ' &nbsp; <button onclick="Clerk.signOut(() => window.location.reload())">Sign Out</button>';
-          } else {
-            container.innerHTML =
-              '<button onclick="Clerk.openSignIn()">Sign In</button>';
+        function reloadAfterClientSignIn() {
+          if (sessionStorage.getItem('clerk-auth-reload') === '1') { return; }
+          sessionStorage.setItem('clerk-auth-reload', '1');
+          const url = new URL(window.location.href);
+          url.searchParams.delete('__clerk_handshake');
+          url.searchParams.delete('__clerk_db_jwt');
+          window.location.replace(url.pathname + url.search + url.hash);
+        }
+
+        function syncClerkAuth() {
+          if (Clerk.user && !serverSignedIn()) {
+            reloadAfterClientSignIn();
+            return;
           }
-        });
-      </script>
-    </body>
-  </html>
+          if (!Clerk.user) {
+            sessionStorage.removeItem('clerk-auth-reload');
+            return;
+          }
+
+          sessionStorage.removeItem('clerk-auth-reload');
+          const container = document.getElementById('clerk-auth');
+          const label = Clerk.user.firstName || (Clerk.user.emailAddresses[0] && Clerk.user.emailAddresses[0].emailAddress);
+          if (container && label) {
+            const signedIn = container.querySelector('span');
+            if (signedIn) { signedIn.textContent = 'Signed in as ' + label; }
+          }
+        }
+
+        const signIn = document.getElementById('clerk-sign-in');
+        const signInBanner = document.getElementById('clerk-sign-in-banner');
+        const signUp = document.getElementById('clerk-sign-up');
+        const signOutForm = document.getElementById('clerk-sign-out-form');
+
+        function openSignIn() {
+          Clerk.openSignIn({ fallbackRedirectUrl: window.location.href });
+        }
+
+        if (signIn) { signIn.addEventListener('click', openSignIn); }
+        if (signInBanner) { signInBanner.addEventListener('click', openSignIn); }
+        if (signUp) {
+          signUp.addEventListener('click', function () {
+            Clerk.openSignUp({ fallbackRedirectUrl: window.location.href });
+          });
+        }
+        if (signOutForm) {
+          signOutForm.addEventListener('submit', async function (event) {
+            if (signOutForm.dataset.clerkSigningOut === '1') { return; }
+            event.preventDefault();
+            signOutForm.dataset.clerkSigningOut = '1';
+            const button = signOutForm.querySelector('button');
+            if (button) { button.disabled = true; }
+            try {
+              if (Clerk.signOut) { await Clerk.signOut(); }
+            } finally {
+              HTMLFormElement.prototype.submit.call(signOutForm);
+            }
+          });
+        }
+
+        syncClerkAuth();
+        if (Clerk.addListener) { Clerk.addListener(syncClerkAuth); }
+      });
+    <% end %>
+  </body>
+</html>

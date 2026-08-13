@@ -26,7 +26,7 @@ RSpec.describe Billetto::Adapter do
   let(:fake_client) do
     double('client').tap do |c|
       allow(c).to receive(:list_events)
-        .and_return({ 'data' => [raw_event], 'has_more' => false })
+        .and_return({ 'data' => [ raw_event ], 'has_more' => false })
     end
   end
 
@@ -62,13 +62,36 @@ RSpec.describe Billetto::Adapter do
 
     it 'follows pagination until has_more is false' do
       allow(fake_client).to receive(:list_events).with(after: nil)
-        .and_return({ 'data' => [raw_event], 'has_more' => true,
+        .and_return({ 'data' => [ raw_event ], 'has_more' => true,
                       'next_url' => '/api/v3/public/events?after=1001&limit=25' })
       allow(fake_client).to receive(:list_events).with(after: '1001')
         .and_return({ 'data' => [], 'has_more' => false })
 
       adapter.fetch_all_events
       expect(fake_client).to have_received(:list_events).twice
+    end
+
+    it 'stops pagination when has_more is true but next_url has no cursor' do
+      allow(fake_client).to receive(:list_events)
+        .and_return({ 'data' => [ raw_event ], 'has_more' => true, 'next_url' => nil })
+
+      expect(adapter.fetch_all_events.size).to eq(1)
+      expect(fake_client).to have_received(:list_events).once
+    end
+
+    it 'skips malformed events instead of failing the batch' do
+      raw_event['startdate'] = 'not-a-date'
+      expect(adapter.fetch_all_events).to eq([])
+    end
+
+    it 'raises MalformedResponseError when the page is not a hash' do
+      allow(fake_client).to receive(:list_events).and_return('oops')
+      expect { adapter.fetch_all_events }.to raise_error(Billetto::MalformedResponseError)
+    end
+
+    it 'raises MalformedResponseError when data is not an array' do
+      allow(fake_client).to receive(:list_events).and_return({ 'data' => 'nope', 'has_more' => false })
+      expect { adapter.fetch_all_events }.to raise_error(Billetto::MalformedResponseError)
     end
   end
 end

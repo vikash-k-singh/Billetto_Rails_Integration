@@ -33,4 +33,28 @@ RSpec.describe Command::Bus do
       expect { bus2.call(test_command) }.to raise_error(ArgumentError, /No handler/)
     end
   end
+
+  describe 'command validation' do
+    let(:validatable) do
+      stub_const('TestValidatableCommand', Class.new do
+        include ActiveModel::Validations
+        attr_accessor :name
+        validates :name, presence: true
+
+        def initialize(name: nil)
+          @name = name
+        end
+      end)
+    end
+
+    it 'raises Command::Invalid for an invalid command' do
+      bus.register(validatable, ->(*) { :ok })
+      expect { bus.call(validatable.new) }.to raise_error(Command::Invalid)
+    end
+
+    it 'calls the handler when the command is valid' do
+      bus.register(validatable, ->(*) { :ok })
+      expect(bus.call(validatable.new(name: 'ok'))).to eq(:ok)
+    end
+  end
 end

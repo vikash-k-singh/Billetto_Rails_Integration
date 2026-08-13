@@ -1,10 +1,12 @@
 module Command
   class Bus
-    # Middleware executes outermost first: Correlation → Transaction → Instrumentation → handler
+    # Middleware executes outermost first:
+    # Correlation → Validation → Transaction → Instrumentation → handler
     MIDDLEWARE = [
       CorrelationMiddleware,
+      ValidationMiddleware,
       TransactionMiddleware,
-      InstrumentationMiddleware,
+      InstrumentationMiddleware
     ].freeze
 
     def initialize

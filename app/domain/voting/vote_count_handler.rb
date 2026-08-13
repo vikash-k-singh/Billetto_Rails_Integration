@@ -1,21 +1,53 @@
 module Voting
   class VoteCountHandler
-    include Handler.async(queue: 'low')
+    include Handler.async(queue: "low")
 
     subscribes_to Voting::EventUpvoted, Voting::EventDownvoted
 
     def call(fact)
       event = Event.find_by!(external_id: fact.data[:event_id])
-      count = VoteCount.find_or_create_by!(event: event)
+      claim_vote!(fact, event)
+      refresh_counts!(event)
+    end
 
-      # with_lock acquires a row-level DB lock and re-reads the record,
-      # preventing race conditions when multiple Sidekiq jobs run simultaneously.
+    private
+
+    def claim_vote!(fact, event)
+      AppliedVoteFact.insert_all(
+        [ {
+          fact_id: fact.event_id,
+          event_id: event.id,
+          user_id: fact.data[:user_id],
+          fact_type: fact.class.name,
+          created_at: Time.current,
+          updated_at: Time.current
+        } ],
+        unique_by: %i[event_id user_id]
+      )
+    end
+
+    def refresh_counts!(event)
+      count = find_or_create_count(event)
       count.with_lock do
-        case fact
-        when Voting::EventUpvoted   then count.increment!(:upvotes)
-        when Voting::EventDownvoted then count.increment!(:downvotes)
-        end
+        count.update!(
+          upvotes: AppliedVoteFact.where(event_id: event.id, fact_type: EventUpvoted.name).count,
+          downvotes: AppliedVoteFact.where(event_id: event.id, fact_type: EventDownvoted.name).count
+        )
       end
+    end
+
+    def find_or_create_count(event)
+      VoteCount.insert_all(
+        [ {
+          event_id: event.id,
+          upvotes: 0,
+          downvotes: 0,
+          created_at: Time.current,
+          updated_at: Time.current
+        } ],
+        unique_by: :event_id
+      )
+      VoteCount.find_by!(event_id: event.id)
     end
   end
 end

@@ -9,11 +9,15 @@ RSpec.describe Voting::EventDownvoted do
   describe '#stream_names' do
     subject(:fact) { described_class.strict(data: { event_id: 'evt-5', user_id: 'usr-9' }) }
 
-    it 'has Voting$ as the primary stream' do
-      expect(fact.stream_names.first).to eq('Voting$evt-5')
+    it 'uses Vote$event$user as the uniqueness stream' do
+      expect(fact.stream_names.first).to eq('Vote$evt-5$usr-9')
     end
 
-    it 'has User$ as the linked stream' do
+    it 'links the Voting$ stream' do
+      expect(fact.stream_names).to include('Voting$evt-5')
+    end
+
+    it 'links the User$ stream' do
       expect(fact.stream_names.last).to eq('User$usr-9')
     end
   end

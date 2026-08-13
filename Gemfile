@@ -64,6 +64,7 @@ end
 group :test do
   gem "shoulda-matchers"
   gem "webmock"
+  gem "capybara", "~> 3.40"
 end
 
 gem 'rails_event_store', '~> 2.18'

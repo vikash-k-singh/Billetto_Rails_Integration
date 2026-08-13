@@ -1,13 +1,17 @@
 module Handler
-  def self.async(queue: 'default')
+  # Subscription DSL used by ApplicationSubscriptions.
+  # Projections run synchronously via ProjectionSubscriber, not Active Job.
+  def self.async(queue: "default")
     class_methods = Module.new do
+      define_method(:async_queue) { queue }
+
       def subscribes_to(*event_classes)
         @subscribed_to = event_classes
       end
 
       def subscriptions
         (@subscribed_to || []).each_with_object({}) do |event_class, hash|
-          hash[event_class] = [self]
+          hash[event_class] = [ self ]
         end
       end
     end

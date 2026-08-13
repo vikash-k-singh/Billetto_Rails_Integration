@@ -22,11 +22,15 @@ RSpec.describe Voting::EventUpvoted do
   describe '#stream_names' do
     subject(:fact) { described_class.strict(data: { event_id: 'evt-42', user_id: 'usr-7' }) }
 
-    it 'has Voting$ as the primary stream' do
-      expect(fact.stream_names.first).to eq('Voting$evt-42')
+    it 'uses Vote$event$user as the uniqueness stream' do
+      expect(fact.stream_names.first).to eq('Vote$evt-42$usr-7')
     end
 
-    it 'has User$ as the linked stream' do
+    it 'links the Voting$ stream' do
+      expect(fact.stream_names).to include('Voting$evt-42')
+    end
+
+    it 'links the User$ stream' do
       expect(fact.stream_names.last).to eq('User$usr-7')
     end
   end

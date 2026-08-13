@@ -10,9 +10,21 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_07_180243) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_13_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "applied_vote_facts", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "event_id", null: false
+    t.uuid "fact_id", null: false
+    t.string "fact_type", null: false
+    t.datetime "updated_at", null: false
+    t.string "user_id", null: false
+    t.index ["event_id", "user_id"], name: "index_applied_vote_facts_on_event_id_and_user_id", unique: true
+    t.index ["event_id"], name: "index_applied_vote_facts_on_event_id"
+    t.index ["fact_id"], name: "index_applied_vote_facts_on_fact_id", unique: true
+  end
 
   create_table "event_store_events", force: :cascade do |t|
     t.datetime "created_at", null: false
@@ -51,7 +63,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_07_180243) do
     t.datetime "starts_at", null: false
     t.string "title", null: false
     t.datetime "updated_at", null: false
+    t.index ["available"], name: "index_events_on_available"
     t.index ["external_id"], name: "index_events_on_external_id", unique: true
+    t.index ["starts_at"], name: "index_events_on_starts_at"
   end
 
   create_table "vote_counts", force: :cascade do |t|
@@ -60,9 +74,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_07_180243) do
     t.bigint "event_id", null: false
     t.datetime "updated_at", null: false
     t.integer "upvotes", default: 0, null: false
-    t.index ["event_id"], name: "index_vote_counts_on_event_id"
+    t.index ["event_id"], name: "index_vote_counts_on_event_id", unique: true
   end
 
+  add_foreign_key "applied_vote_facts", "events"
   add_foreign_key "event_store_events_in_streams", "event_store_events", column: "event_id", primary_key: "event_id"
   add_foreign_key "vote_counts", "events"
 end

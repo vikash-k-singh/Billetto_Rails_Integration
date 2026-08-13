@@ -1,37 +1,39 @@
-<h1>Events</h1>
+<section class="page-head">
+  <div>
+    <h1>Events</h1>
+    <p class="lede">Upcoming experiences you can browse, vote on, and open on Billetto.</p>
+  </div>
+</section>
 
-<% @events.each do |event| %>
-  <div style="border: 1px solid #ccc; margin: 1rem; padding: 1rem;">
-    <% if event.image_url.present? %>
-      <img src="<%= event.image_url %>" alt="<%= event.title %>" width="200">
-    <% end %>
-
-    <h2><%= event.title %></h2>
-    <p><strong>Date:</strong> <%= event.starts_at.strftime('%d %b %Y, %H:%M') %></p>
-
-    <% if event.location.present? %>
-      <p><strong>Location:</strong> <%= event.location %></p>
-    <% end %>
-
-    <p><%= truncate(event.description.to_s, length: 200) %></p>
-
-    <% count = event.vote_count %>
-    <p>
-      👍 <%= count&.upvotes || 0 %> &nbsp;
-      👎 <%= count&.downvotes || 0 %>
-    </p>
-
-    <% if current_user %>
-      <%= button_to '👍 Upvote',
-            votes_path(event_id: event.external_id, vote_type: 'up'),
-            method: :post %>
-      <%= button_to '👎 Downvote',
-            votes_path(event_id: event.external_id, vote_type: 'down'),
-            method: :post %>
-    <% end %>
+<% unless current_user %>
+  <div class="callout">
+    <p><em>Sign in to vote on events.</em></p>
+    <button type="button" class="btn" id="clerk-sign-in-banner">Sign in to vote</button>
   </div>
 <% end %>
 
-<% unless current_user %>
-  <p><em>Sign in to vote on events.</em></p>
+<% if @events.empty? %>
+  <div class="empty-state">
+    <h2>No events just yet</h2>
+    <p>When Billetto events are ingested, they will show up here.</p>
+  </div>
+<% else %>
+  <ul class="event-list">
+    <% @events.each do |event| %>
+      <li>
+        <%= render "events/event", event: event %>
+      </li>
+    <% end %>
+  </ul>
+<% end %>
+
+<% if @page > 1 || @has_next %>
+  <nav class="pagination" aria-label="Pagination">
+    <% if @page > 1 %>
+      <%= link_to "Previous", events_path(page: @page - 1) %>
+    <% end %>
+    <% if @has_next %>
+      <%= link_to "Next", events_path(page: @page + 1) %>
+    <% end %>
+  </nav>
 <% end %>
