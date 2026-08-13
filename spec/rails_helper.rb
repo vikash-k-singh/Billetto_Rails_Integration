@@ -47,10 +47,6 @@ RSpec.configure do |config|
 
   config.include FactoryBot::Syntax::Methods
 
-  config.before(:suite) do
-    FactoryBot.find_definitions
-  end
-
   config.before do
     WebMock.disable_net_connect!(allow_localhost: true)
   end

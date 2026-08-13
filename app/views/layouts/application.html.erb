@@ -20,6 +20,10 @@
 
     <%# Includes all stylesheet files in app/assets/stylesheets %>
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <script async crossorigin="anonymous"
+      src="https://useful-snipe-29.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+      data-clerk-publishable-key="<%= ENV['CLERK_PUBLISHABLE_KEY'] %>">
+    </script>
   </head>
 
   <body>

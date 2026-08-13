@@ -1,0 +1,37 @@
+<h1>Events</h1>
+
+<% @events.each do |event| %>
+  <div style="border: 1px solid #ccc; margin: 1rem; padding: 1rem;">
+    <% if event.image_url.present? %>
+      <img src="<%= event.image_url %>" alt="<%= event.title %>" width="200">
+    <% end %>
+
+    <h2><%= event.title %></h2>
+    <p><strong>Date:</strong> <%= event.starts_at.strftime('%d %b %Y, %H:%M') %></p>
+
+    <% if event.location.present? %>
+      <p><strong>Location:</strong> <%= event.location %></p>
+    <% end %>
+
+    <p><%= truncate(event.description.to_s, length: 200) %></p>
+
+    <% count = event.vote_count %>
+    <p>
+      👍 <%= count&.upvotes || 0 %> &nbsp;
+      👎 <%= count&.downvotes || 0 %>
+    </p>
+
+    <% if current_user %>
+      <%= button_to '👍 Upvote',
+            votes_path(event_id: event.external_id, vote_type: 'up'),
+            method: :post %>
+      <%= button_to '👎 Downvote',
+            votes_path(event_id: event.external_id, vote_type: 'down'),
+            method: :post %>
+    <% end %>
+  </div>
+<% end %>
+
+<% unless current_user %>
+  <p><em>Sign in to vote on events.</em></p>
+<% end %>

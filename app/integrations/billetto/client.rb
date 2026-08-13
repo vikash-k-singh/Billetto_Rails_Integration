@@ -22,8 +22,8 @@ module Billetto
 
     def connection
       @connection ||= Faraday.new(url: BASE_URL) do |f|
-        f.request :authorization, :basic, @access_key_id, @access_key_secret
-        f.headers['Accept'] = 'application/json'
+        f.headers['Api-Keypair'] = "#{@access_key_id}:#{@access_key_secret}"
+        f.headers['Accept']      = 'application/json'
         f.response :json
         f.adapter Faraday.default_adapter
       end

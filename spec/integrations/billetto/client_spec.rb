@@ -24,10 +24,10 @@ RSpec.describe Billetto::Client do
   end
 
   describe '#list_events' do
-    it 'uses HTTP Basic Auth and returns parsed JSON' do
+    it 'sends the Api-Keypair header and returns parsed JSON' do
       stub_request(:get, events_url)
         .with(
-          headers: { 'Authorization' => /\ABasic / },
+          headers: { 'Api-Keypair' => 'TEST_ID:TEST_SECRET' },
           query: hash_including({})
         )
         .to_return(status: 200, body: success_body,

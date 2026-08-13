@@ -27,7 +27,7 @@ module Billetto
         title:          raw['title'],
         description:    sanitize(raw['description']),
         image_url:      raw['image_link'],
-        starts_at:      Time.parse(raw['startdate']),
+        starts_at:      raw['startdate'] ? Time.parse(raw['startdate']) : nil,
         ends_at:        raw['enddate'] ? Time.parse(raw['enddate']) : nil,
         billetto_url:   raw['url'],
         location:       build_location(raw['location']),
