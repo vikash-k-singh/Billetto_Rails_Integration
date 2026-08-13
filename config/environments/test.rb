@@ -47,4 +47,3 @@ Rails.application.configure do
     Rails.configuration.billetto_adapter = Billetto::FakeAdapter.new
   end
 end
-

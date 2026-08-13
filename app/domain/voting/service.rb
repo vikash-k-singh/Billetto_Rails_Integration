@@ -17,18 +17,13 @@ module Voting
 
     def cast_vote(command, fact_class)
       Event.find_by!(external_id: command.event_id)
-
-      existing = existing_vote(command.event_id, command.user_id)
-      if existing
-        project_vote(existing)
-        return
-      end
+      return if existing_vote(command.event_id, command.user_id)
 
       fact = fact_class.strict(data: { event_id: command.event_id, user_id: command.user_id })
+      apply_command_metadata(fact)
       publish_to_streams(fact)
     rescue RubyEventStore::WrongExpectedEventVersion
-      existing = existing_vote(command.event_id, command.user_id)
-      project_vote(existing) if existing
+      # Concurrent duplicate on Vote$event$user with expected_version: :none
     end
 
     def existing_vote(event_id, user_id)
@@ -40,8 +35,12 @@ module Voting
         .first
     end
 
-    def project_vote(fact)
-      VoteCountHandler.new.call(fact)
+    def apply_command_metadata(fact)
+      command_id = Command::CorrelationMiddleware.current_id
+      return if command_id.blank?
+
+      fact.metadata[:correlation_id] = command_id
+      fact.metadata[:causation_id] = command_id
     end
 
     def vote_stream_name(event_id, user_id)

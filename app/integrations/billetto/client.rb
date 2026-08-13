@@ -22,6 +22,8 @@ module Billetto
       raise TimeoutError, "Billetto API timed out"
     rescue Faraday::ConnectionFailed
       raise ConnectionError, "Could not connect to Billetto API"
+    rescue Faraday::Error
+      raise ApiError, "Billetto API request failed"
     end
 
     private

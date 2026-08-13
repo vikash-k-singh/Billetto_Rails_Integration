@@ -67,7 +67,18 @@ RSpec.describe Voting::Service do
       expect(voting_stream.count).to eq(2)
     end
 
-    it 'repairs the vote count when the fact exists but the read model was missed' do
+    it 'projects the first vote through the event subscription' do
+      expect { service.call(upvote_cmd) }
+        .to change { event.reload.vote_count&.upvotes }.from(nil).to(1)
+    end
+
+    it 'does not change vote counts on a duplicate vote' do
+      service.call(upvote_cmd)
+      expect { service.call(upvote_cmd) }
+        .not_to change { event.reload.vote_count.upvotes }
+    end
+
+    it 'does not repair a wiped projection on a duplicate vote' do
       service.call(upvote_cmd)
       VoteCount.delete_all
       AppliedVoteFact.delete_all
@@ -75,7 +86,38 @@ RSpec.describe Voting::Service do
       service.call(upvote_cmd)
 
       expect(voting_stream.count).to eq(1)
-      expect(event.reload.vote_count.upvotes).to eq(1)
+      expect(event.reload.vote_count).to be_nil
+    end
+  end
+
+  describe 'command correlation metadata' do
+    it 'copies the command correlation id onto the published fact' do
+      Rails.configuration.command_bus.call(upvote_cmd)
+      fact = voting_stream.first
+
+      expect(fact.metadata[:correlation_id]).to be_present
+      expect(fact.metadata[:correlation_id]).not_to eq(fact.event_id)
+      expect(fact.metadata[:causation_id]).to eq(fact.metadata[:correlation_id])
+    end
+
+    it 'does not reuse a correlation id across separate commands' do
+      Rails.configuration.command_bus.call(upvote_cmd('user_a'))
+      Rails.configuration.command_bus.call(upvote_cmd('user_b'))
+
+      ids = voting_stream.map { |fact| fact.metadata[:correlation_id] }
+      expect(ids).to all(be_present)
+      expect(ids.uniq.size).to eq(2)
+    end
+
+    it 'does not inherit the previous command correlation id' do
+      Rails.configuration.command_bus.call(upvote_cmd('user_a'))
+      first_id = voting_stream.first.metadata[:correlation_id]
+
+      service.call(upvote_cmd('user_b'))
+      second = voting_stream.find { |fact| fact.data[:user_id] == 'user_b' }
+
+      expect(Command::CorrelationMiddleware.current_id).to be_nil
+      expect(second.metadata[:correlation_id]).not_to eq(first_id)
     end
   end
 

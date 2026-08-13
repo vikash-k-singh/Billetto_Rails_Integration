@@ -3,10 +3,11 @@ module Command
     KEY = :command_correlation_id
 
     def call(_command)
-      Thread.current[KEY] ||= SecureRandom.uuid
+      previous = Thread.current[KEY]
+      Thread.current[KEY] = SecureRandom.uuid
       yield
     ensure
-      Thread.current[KEY] = nil
+      Thread.current[KEY] = previous
     end
 
     def self.current_id
