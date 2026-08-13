@@ -67,7 +67,7 @@ group :test do
   gem "capybara", "~> 3.40"
 end
 
-gem "rails_event_store", "~> 2.18"
+gem "rails_event_store", "~> 3.0"
 gem "dry-struct", "~> 1.8"
 gem "dry-types", "~> 1.9"
 gem "faraday", "~> 2.14"
