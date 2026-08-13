@@ -7,7 +7,7 @@ module ObjectRepository
   end
 
   def self.find(tid)
-    prefix = tid.to_s.split('_').first
+    prefix = tid.to_s.split("_").first
     model_class = @registry[prefix]
     raise "Unknown type prefix '#{prefix}' for tid '#{tid}'" unless model_class
 

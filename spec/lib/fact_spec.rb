@@ -6,7 +6,7 @@ RSpec.describe Fact do
       const_set(:SCHEMA, { name: String, count: Integer }.freeze)
 
       def stream_names
-        ["Test$#{data[:name]}"]
+        [ "Test$#{data[:name]}" ]
       end
     end
   end
@@ -42,7 +42,7 @@ RSpec.describe Fact do
   describe '#stream_names' do
     it 'returns the correct stream name' do
       fact = event_class.strict(data: { name: 'alpha', count: 1 })
-      expect(fact.stream_names).to eq(['Test$alpha'])
+      expect(fact.stream_names).to eq([ 'Test$alpha' ])
     end
   end
 end

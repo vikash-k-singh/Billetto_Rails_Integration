@@ -81,6 +81,13 @@ RSpec.describe Billetto::Client do
       expect { client.list_events }.to raise_error(Billetto::ConnectionError)
     end
 
+    it 'raises ApiError for other Faraday transport failures' do
+      stub_request(:get, events_url)
+        .with(query: hash_including({}))
+        .to_raise(Faraday::Error.new('ssl failed'))
+      expect { client.list_events }.to raise_error(Billetto::ApiError)
+    end
+
     it 'raises MalformedResponseError for invalid JSON' do
       stub_request(:get, events_url)
         .with(query: hash_including({}))

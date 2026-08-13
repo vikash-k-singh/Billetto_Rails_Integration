@@ -69,25 +69,43 @@ bundle exec rspec
 
 ## Architecture
 
-Voting keeps this repository's house style. It is not rewritten around AggregateRoot.
-
 ```
-Controller
-  → Command (UpvoteEvent / DownvoteEvent)
-  → Command::Bus (correlation, validation, transaction, instrumentation)
-  → Voting::Service
-  → Fact (EventUpvoted / EventDownvoted)
-  → Rails Event Store
-  → ApplicationSubscriptions / ProjectionSubscriber
-  → VoteCountHandler (synchronous)
-  → VoteCount read model
+Billetto API
+    ↓
+Billetto ACL
+    ↓
+Billetto::Client
+    ↓
+Billetto::Adapter
+    ↓
+Billetto::IngestService
+    ↓
+Event
+
+Clerk
+    ↓
+VotesController
+    ↓
+Command::Bus
+    ↓
+Voting::Service
+    ↓
+EventUpvoted / EventDownvoted
+    ↓
+Rails Event Store
+    ↓
+ApplicationSubscriptions
+    ↓
+VoteCountHandler
+    ↓
+VoteCount
 ```
 
 ### Authentication
 
 User authentication is handled by Clerk.com.
 
-- The layout loads Clerk JS from the current application's Frontend API host, not a hardcoded instance.
+- The layout loads Clerk JS from the current application's Frontend API host.
 - Sign In, Sign Up, and Sign Out controls are rendered in the nav.
 - The backend reads the `__session` cookie (or a Bearer token), verifies it with `Clerk::SDK#verify_token`, and exposes `current_user`.
 - There is no local users table. The Clerk `sub` claim is the user id stored on vote facts.
@@ -95,25 +113,42 @@ User authentication is handled by Clerk.com.
 
 ### Voting
 
-- `VotesController` stays thin: it authenticates, builds a command with `current_user.id`, and calls the command bus.
-- Invalid commands and missing events redirect with an alert instead of raising 500s.
-- A user may vote once per event. Direction switching is not supported.
-- Uniqueness is enforced by publishing to `Vote$<event_id>$<user_id>` with `expected_version: :none`. Concurrent duplicates raise `WrongExpectedEventVersion` and are ignored.
-- The same fact is also linked onto `Voting$<event_id>` and `User$<user_id>`.
+`VotesController` stays thin: it authenticates, builds a command with `current_user.id`, and sends it to `Command::Bus`. It does not publish facts or update `VoteCount`.
 
-### Rails Event Store and the read model
+A user may vote once per event. Direction switching is not supported.
 
-Each vote is an immutable `EventUpvoted` or `EventDownvoted` fact with `event_id` and `user_id`.
+Uniqueness is enforced by publishing to `Vote$<event_id>$<user_id>` with `expected_version: :none`. A second vote for the same user and event is a no-op. Concurrent duplicates raise `WrongExpectedEventVersion` and are ignored.
 
-`ApplicationSubscriptions` registers handlers against a fresh `RailsEventStore::Client` in `to_prepare`, so development reloads do not stack subscribers.
+The same fact is linked onto:
 
-`Handler.async` is the house-style subscription DSL (`subscribes_to`). It does not enqueue Active Job. `ProjectionSubscriber` calls `VoteCountHandler` in the same command transaction as `event_store.publish`, so the turbo-stream response can read the updated count immediately.
+- `Voting$<event_id>` — all votes for that event (also used to rebuild one event)
+- `User$<user_id>` — all votes by that user
 
-`VoteCountHandler` claims the voter in `applied_vote_facts` (unique on `event_id` + `user_id`) and then recounts. Retries and duplicate delivery do not double-count. `vote_counts.event_id` is unique.
+### Read model
 
-If a fact is already in the `Vote$` stream but the read model was missed, `Voting::Service` re-applies that fact to `VoteCountHandler` without publishing again.
+`VoteCount` is a read model derived from `EventUpvoted` and `EventDownvoted`.
 
-The listing reads `vote_counts` with `includes(:vote_count)`. It does not replay the event store.
+- `VoteCountHandler` is subscribed through `ApplicationSubscriptions`.
+- It claims the voter in `applied_vote_facts` (unique on `event_id` + `user_id`) and recounts.
+- Duplicate delivery does not double-count.
+- `vote_counts.event_id` is unique.
+- The listing reads `vote_counts` with `includes(:vote_count)`. It does not replay the event store.
+
+The event store is the source of truth for votes. Rebuild the projection with:
+
+```bash
+bin/rails voting:rebuild_vote_counts
+```
+
+Optional: `bin/rails voting:rebuild_vote_counts[EVENT_EXTERNAL_ID]` rebuilds one event from its `Voting$` stream.
+
+### Synchronous projection
+
+`VoteCountHandler` runs synchronously in the same command transaction as `event_store.publish`.
+
+The Turbo Stream vote response needs the updated count immediately. The handler is still event-driven: it only runs because a fact was published. `Handler.async` is the house-style subscription DSL; it does not enqueue a job.
+
+Idempotent claims and recounts mean the same handler can later run asynchronously without changing vote rules.
 
 ### Billetto API
 
@@ -127,15 +162,25 @@ Event             → ActiveRecord persistence
 ```
 
 - The client calls `GET https://billetto.dk/api/v3/public/events`.
-- Timeouts, connection failures, 401, 429, 5xx, and invalid JSON are mapped to `Billetto::*` errors.
+- Timeouts, connection failures, other Faraday transport errors, 401, 429, 5xx, and invalid JSON are mapped to `Billetto::*` errors. Faraday exceptions do not leave the ACL.
+- Test uses `Billetto::FakeAdapter` (`config/environments/test.rb`). Client specs stub HTTP at the Faraday boundary.
 - Pagination stops when `has_more` is false, the cursor is missing/unchanged, or a page cap is reached.
 - An empty successful fetch does not mark every local event unavailable.
 - Re-running ingest updates existing rows by `external_id` and does not create duplicates.
 
+### Architectural decisions
+
+The Developer's Guide contains patterns for domains such as long-lived RFC workflows. This application does not require those patterns for the Billetto event catalog and voting workflow.
+
+- `Event` is a persistence model keyed by `external_id`, not a tid aggregate, so it is not registered in `ObjectRepository` and does not use `EventStoreInjector` or AggregateRoot.
+- Voting is a single command that publishes one fact. There is no long-lived process, so there is no process manager.
+- There is no cross-module collaboration, so there is no `app/integrators` handler.
+- There are no incoming webhooks.
+
 ### Assumptions and trade-offs
 
 - One vote per user per event. Changing a vote would need a retraction fact and a compensating projection update.
-- Vote counts are updated in the same request as the vote, not by a background job.
+- Vote counts are updated in the same request as the vote.
 - Ingest is manual or cron. There is no in-app trigger.
 - Unavailable events are hidden from the listing.
 - Listing is paginated (25 per page) and ordered by `starts_at`.

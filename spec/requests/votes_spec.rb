@@ -60,15 +60,15 @@ RSpec.describe 'Votes', type: :request do
         expect(event.reload.vote_count.upvotes).to eq(1)
       end
 
-      it "repairs a missed projection on a later turbo stream vote" do
+      it "does not repair a missed projection on a later turbo stream vote" do
         post "/votes", params: { event_id: event.external_id, vote_type: "up" }, as: :turbo_stream
         VoteCount.delete_all
         AppliedVoteFact.delete_all
 
         post "/votes", params: { event_id: event.external_id, vote_type: "up" }, as: :turbo_stream
 
-        expect(response.body).to include("👍 1")
-        expect(event.reload.vote_count.upvotes).to eq(1)
+        expect(response.body).to include("👍 0")
+        expect(event.reload.vote_count).to be_nil
       end
 
       it 'dispatches UpvoteEvent for vote_type=up' do
