@@ -3,13 +3,13 @@ source "https://rubygems.org"
 ruby "3.3.6"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 8.1.3"
+gem "rails", "~> 8.1.3", ">= 8.1.3.1"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
 # Use postgresql as the database for Active Record
 gem "pg", "~> 1.1"
 # Use the Puma web server [https://github.com/puma/puma]
-gem "puma", ">= 5.0"
+gem "puma", ">= 8.0.2"
 # Use JavaScript with ESM import maps [https://github.com/rails/importmap-rails]
 gem "importmap-rails"
 # Hotwire's SPA-like page accelerator [https://turbo.hotwired.dev]
@@ -70,6 +70,6 @@ end
 gem "rails_event_store", "~> 2.18"
 gem "dry-struct", "~> 1.8"
 gem "dry-types", "~> 1.9"
-gem "faraday", "~> 2.14"
+gem "faraday", "~> 2.14", ">= 2.14.3"
 gem "faraday-net_http", "~> 3.4"
 gem "clerk-sdk-ruby", "~> 5.1", require: "clerk"
